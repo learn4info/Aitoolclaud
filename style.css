@@ -1,0 +1,121 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: #1a1a2e;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.calculator {
+  background: #16213e;
+  border-radius: 24px;
+  padding: 20px;
+  width: 320px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+}
+
+.display {
+  background: #0f3460;
+  border-radius: 16px;
+  padding: 20px 24px 16px;
+  margin-bottom: 20px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.expression {
+  font-size: 15px;
+  color: #a8b2d8;
+  min-height: 22px;
+  word-break: break-all;
+  text-align: right;
+}
+
+.result {
+  font-size: 48px;
+  font-weight: 300;
+  color: #e2e8f0;
+  word-break: break-all;
+  text-align: right;
+  line-height: 1.1;
+  transition: font-size 0.1s ease;
+}
+
+.result.small { font-size: 32px; }
+.result.xsmall { font-size: 22px; }
+
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.btn {
+  background: #1a2a4a;
+  border: none;
+  border-radius: 50%;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 400;
+  height: 64px;
+  width: 64px;
+  transition: background 0.15s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.btn:hover {
+  background: #243557;
+}
+
+.btn:active {
+  transform: scale(0.92);
+  background: #2d4270;
+}
+
+.btn-wide {
+  border-radius: 32px;
+  width: 100%;
+  grid-column: span 2;
+  justify-content: flex-start;
+  padding-left: 24px;
+}
+
+.btn-secondary {
+  background: #2d3a5c;
+  color: #a8b2d8;
+  font-size: 18px;
+}
+
+.btn-secondary:hover {
+  background: #384870;
+}
+
+.btn-operator {
+  background: #e94560;
+  color: #fff;
+  font-size: 22px;
+}
+
+.btn-operator:hover {
+  background: #ff5577;
+}
+
+.btn-operator.active {
+  background: #fff;
+  color: #e94560;
+}
