@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; background: #1a1a2e;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .calculator {
+      background: #16213e; border-radius: 24px; padding: 20px;
+      width: 320px; box-shadow: 0 25px 60px rgba(0,0,0,.5);
+    }
+    .display {
+      background: #0f3460; border-radius: 16px; padding: 20px 24px 16px;
+      margin-bottom: 20px; min-height: 110px; display: flex;
+      flex-direction: column; justify-content: flex-end; align-items: flex-end; overflow: hidden;
+    }
+    .expression { font-size: 15px; color: #a8b2d8; min-height: 22px; text-align: right; }
+    .result {
+      font-size: 48px; font-weight: 300; color: #e2e8f0;
+      word-break: break-all; text-align: right; line-height: 1.1; transition: font-size .1s;
+    }
+    .result.small  { font-size: 32px; }
+    .result.xsmall { font-size: 22px; }
+    .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .btn {
+      background: #1a2a4a; border: none; border-radius: 50%; color: #e2e8f0;
+      cursor: pointer; font-size: 20px; height: 64px; width: 64px;
+      transition: background .15s, transform .1s;
+      display: flex; align-items: center; justify-content: center; user-select: none;
+    }
+    .btn:hover  { background: #243557; }
+    .btn:active { transform: scale(.92); background: #2d4270; }
+    .btn-wide   { border-radius: 32px; width: 100%; grid-column: span 2; justify-content: flex-start; padding-left: 24px; }
+    .btn-secondary { background: #2d3a5c; color: #a8b2d8; font-size: 18px; }
+    .btn-secondary:hover { background: #384870; }
+    .btn-operator { background: #e94560; color: #fff; font-size: 22px; }
+    .btn-operator:hover  { background: #ff5577; }
+    .btn-operator.active { background: #fff; color: #e94560; }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <div class="display">
+      <div class="expression" id="expression"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="buttons">
+      <button class="btn btn-wide btn-secondary" data-action="clear">AC</button>
+      <button class="btn btn-secondary" data-action="toggle-sign">+/-</button>
+      <button class="btn btn-secondary" data-action="percent">%</button>
+      <button class="btn btn-operator" data-action="operator" data-value="÷">÷</button>
+
+      <button class="btn" data-action="digit" data-value="7">7</button>
+      <button class="btn" data-action="digit" data-value="8">8</button>
+      <button class="btn" data-action="digit" data-value="9">9</button>
+      <button class="btn btn-operator" data-action="operator" data-value="×">×</button>
+
+      <button class="btn" data-action="digit" data-value="4">4</button>
+      <button class="btn" data-action="digit" data-value="5">5</button>
+      <button class="btn" data-action="digit" data-value="6">6</button>
+      <button class="btn btn-operator" data-action="operator" data-value="−">−</button>
+
+      <button class="btn" data-action="digit" data-value="1">1</button>
+      <button class="btn" data-action="digit" data-value="2">2</button>
+      <button class="btn" data-action="digit" data-value="3">3</button>
+      <button class="btn btn-operator" data-action="operator" data-value="+">+</button>
+
+      <button class="btn btn-wide" data-action="digit" data-value="0">0</button>
+      <button class="btn" data-action="decimal">.</button>
+      <button class="btn btn-operator" data-action="equals">=</button>
+    </div>
+  </div>
+  <script>
+    'use strict';
+    const state = { current:'0', previous:null, operator:null, waitingForOperand:false, expression:'' };
+    const resultEl = document.getElementById('result');
+    const expressionEl = document.getElementById('expression');
+
+    function updateDisplay() {
+      resultEl.textContent = state.current;
+      expressionEl.textContent = state.expression;
+      const len = state.current.length;
+      resultEl.classList.toggle('small',  len > 10);
+      resultEl.classList.toggle('xsmall', len > 14);
+    }
+    function setActiveOp(op) {
+      document.querySelectorAll('.btn-operator').forEach(b => b.classList.toggle('active', b.dataset.value === op));
+    }
+    function inputDigit(d) {
+      if (state.waitingForOperand) { state.current = d; state.waitingForOperand = false; }
+      else { state.current = state.current === '0' ? d : state.current + d; }
+      updateDisplay();
+    }
+    function inputDecimal() {
+      if (state.waitingForOperand) { state.current = '0.'; state.waitingForOperand = false; updateDisplay(); return; }
+      if (!state.current.includes('.')) { state.current += '.'; updateDisplay(); }
+    }
+    function calc(a, b, op) {
+      const x = parseFloat(a), y = parseFloat(b);
+      if (op==='+') return x+y; if (op==='−') return x-y;
+      if (op==='×') return x*y; if (op==='÷') return y!==0?x/y:'Error';
+      return b;
+    }
+    function fmt(v) { return v==='Error'?'Error':String(parseFloat(v.toPrecision(12))); }
+    function handleOperator(op) {
+      if (state.operator && !state.waitingForOperand) {
+        const r = calc(state.previous, state.current, state.operator);
+        state.current = fmt(r); state.previous = state.current;
+        state.expression = `${state.previous} ${op}`;
+      } else { state.previous = state.current; state.expression = `${state.current} ${op}`; }
+      state.operator = op; state.waitingForOperand = true; setActiveOp(op); updateDisplay();
+    }
+    function handleEquals() {
+      if (!state.operator || state.waitingForOperand) return;
+      const r = calc(state.previous, state.current, state.operator);
+      state.expression = `${state.previous} ${state.operator} ${state.current} =`;
+      state.current = fmt(r); state.previous = null; state.operator = null;
+      state.waitingForOperand = true; setActiveOp(null); updateDisplay();
+    }
+    function handleClear() {
+      Object.assign(state, {current:'0',previous:null,operator:null,waitingForOperand:false,expression:''});
+      setActiveOp(null); updateDisplay();
+    }
+    function handleToggleSign() {
+      if (state.current==='0'||state.current==='Error') return;
+      state.current = state.current.startsWith('-') ? state.current.slice(1) : '-'+state.current;
+      updateDisplay();
+    }
+    function handlePercent() {
+      const v = parseFloat(state.current); if (isNaN(v)) return;
+      state.current = String(v/100); updateDisplay();
+    }
+    document.querySelector('.buttons').addEventListener('click', e => {
+      const btn = e.target.closest('.btn'); if (!btn) return;
+      const {action, value} = btn.dataset;
+      if (action==='digit') inputDigit(value);
+      else if (action==='decimal') inputDecimal();
+      else if (action==='operator') handleOperator(value);
+      else if (action==='equals') handleEquals();
+      else if (action==='clear') handleClear();
+      else if (action==='toggle-sign') handleToggleSign();
+      else if (action==='percent') handlePercent();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key>='0'&&e.key<='9') inputDigit(e.key);
+      else if (e.key==='.') inputDecimal();
+      else if (e.key==='+') handleOperator('+');
+      else if (e.key==='-') handleOperator('−');
+      else if (e.key==='*') handleOperator('×');
+      else if (e.key==='/') { e.preventDefault(); handleOperator('÷'); }
+      else if (e.key==='Enter'||e.key==='=') handleEquals();
+      else if (e.key==='Escape') handleClear();
+      else if (e.key==='%') handlePercent();
+      else if (e.key==='Backspace') {
+        if (!state.waitingForOperand&&state.current.length>1) state.current=state.current.slice(0,-1);
+        else state.current='0'; updateDisplay();
+      }
+    });
+    updateDisplay();
+  </script>
+</body>
+</html>
