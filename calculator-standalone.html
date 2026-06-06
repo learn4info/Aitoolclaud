@@ -2,58 +2,189 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Calculator</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      display: flex; justify-content: center; align-items: center;
-      min-height: 100vh; background: #1a1a2e;
+      display: flex; justify-content: center; align-items: flex-start;
+      min-height: 100vh; background: #1a1a2e; padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    .calculator {
-      background: #16213e; border-radius: 24px; padding: 20px;
-      width: 320px; box-shadow: 0 25px 60px rgba(0,0,0,.5);
+
+    .app { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* ── Top bar ── */
+    .top-bar {
+      display: flex; justify-content: space-between; align-items: center;
     }
+    .mode-toggle, .history-toggle {
+      background: #16213e; border: none; border-radius: 20px;
+      color: #a8b2d8; font-size: 13px; padding: 6px 14px;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .mode-toggle:hover, .history-toggle:hover { background: #243557; color: #e2e8f0; }
+    .mode-toggle.active { background: #e94560; color: #fff; }
+    .history-toggle.active { background: #0f3460; color: #e2e8f0; }
+
+    /* ── Calculator card ── */
+    .calculator { background: #16213e; border-radius: 24px; padding: 16px; }
+
+    /* ── Display ── */
     .display {
-      background: #0f3460; border-radius: 16px; padding: 20px 24px 16px;
-      margin-bottom: 20px; min-height: 110px; display: flex;
-      flex-direction: column; justify-content: flex-end; align-items: flex-end; overflow: hidden;
+      background: #0f3460; border-radius: 16px;
+      padding: 16px 20px 14px; margin-bottom: 14px;
+      min-height: 120px; display: flex; flex-direction: column;
+      justify-content: flex-end; align-items: flex-end; overflow: hidden; position: relative;
     }
-    .expression { font-size: 15px; color: #a8b2d8; min-height: 22px; text-align: right; }
+    .memory-badge {
+      position: absolute; top: 10px; left: 12px;
+      font-size: 11px; color: #e94560; font-weight: 600;
+      opacity: 0; transition: opacity .2s;
+    }
+    .memory-badge.visible { opacity: 1; }
+    .expression { font-size: 14px; color: #a8b2d8; min-height: 20px; text-align: right; word-break: break-all; }
     .result {
-      font-size: 48px; font-weight: 300; color: #e2e8f0;
-      word-break: break-all; text-align: right; line-height: 1.1; transition: font-size .1s;
+      font-size: 46px; font-weight: 300; color: #e2e8f0;
+      word-break: break-all; text-align: right; line-height: 1.1;
+      transition: font-size .1s; cursor: pointer; user-select: none;
     }
-    .result.small  { font-size: 32px; }
+    .result:active { opacity: .7; }
+    .result.small  { font-size: 30px; }
     .result.xsmall { font-size: 22px; }
-    .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .copy-toast {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(233,69,96,.92); color: #fff; padding: 10px 22px;
+      border-radius: 30px; font-size: 14px; pointer-events: none;
+      opacity: 0; transition: opacity .2s; z-index: 100;
+    }
+    .copy-toast.show { opacity: 1; }
+
+    /* ── Buttons shared ── */
+    .buttons { display: grid; gap: 10px; }
+    .basic-grid  { grid-template-columns: repeat(4, 1fr); }
+    .sci-grid    { grid-template-columns: repeat(5, 1fr); }
+
     .btn {
       background: #1a2a4a; border: none; border-radius: 50%; color: #e2e8f0;
-      cursor: pointer; font-size: 20px; height: 64px; width: 64px;
-      transition: background .15s, transform .1s;
-      display: flex; align-items: center; justify-content: center; user-select: none;
+      cursor: pointer; font-size: 18px; height: 60px; width: 60px;
+      transition: background .12s, transform .08s;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+      justify-self: center;
     }
     .btn:hover  { background: #243557; }
-    .btn:active { transform: scale(.92); background: #2d4270; }
-    .btn-wide   { border-radius: 32px; width: 100%; grid-column: span 2; justify-content: flex-start; padding-left: 24px; }
-    .btn-secondary { background: #2d3a5c; color: #a8b2d8; font-size: 18px; }
+    .btn:active { transform: scale(.88); background: #2d4270; }
+
+    .btn-wide {
+      border-radius: 30px; width: 100%; justify-self: stretch;
+      grid-column: span 2; justify-content: flex-start; padding-left: 22px;
+    }
+    .btn-secondary { background: #2d3a5c; color: #a8b2d8; font-size: 16px; }
     .btn-secondary:hover { background: #384870; }
-    .btn-operator { background: #e94560; color: #fff; font-size: 22px; }
+    .btn-operator  { background: #e94560; color: #fff; }
     .btn-operator:hover  { background: #ff5577; }
     .btn-operator.active { background: #fff; color: #e94560; }
+    .btn-sci { background: #0f3460; color: #7eb8f7; font-size: 14px; border-radius: 14px; width: 100%; justify-self: stretch; }
+    .btn-sci:hover  { background: #173d6b; }
+    .btn-sci:active { transform: scale(.9); }
+    .btn-mem { background: #1e2d50; color: #a8d8a8; font-size: 13px; border-radius: 14px; width: 100%; justify-self: stretch; }
+    .btn-mem:hover  { background: #263a60; }
+    .btn-mem:active { transform: scale(.9); }
+    .btn-back { font-size: 20px; }
+
+    /* ── Sci panel ── */
+    .sci-panel { display: none; }
+    .sci-panel.visible { display: grid; }
+    .sci-panel { grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 10px; }
+
+    /* ── Memory row ── */
+    .mem-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px;
+    }
+
+    /* ── History panel ── */
+    .history-panel {
+      background: #16213e; border-radius: 20px; padding: 16px;
+      max-height: 320px; overflow-y: auto; display: none;
+    }
+    .history-panel.visible { display: block; }
+    .history-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .history-title { color: #a8b2d8; font-size: 14px; font-weight: 600; }
+    .clear-history {
+      background: none; border: none; color: #e94560; font-size: 12px; cursor: pointer;
+    }
+    .history-empty { color: #4a5a7a; font-size: 14px; text-align: center; padding: 20px 0; }
+    .history-item {
+      padding: 10px 0; border-bottom: 1px solid #1f2d4a; cursor: pointer;
+      transition: background .1s; border-radius: 8px;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-item:hover { background: #1f2d4a; padding-left: 8px; }
+    .history-expr { font-size: 13px; color: #a8b2d8; }
+    .history-val  { font-size: 20px; color: #e2e8f0; font-weight: 300; }
+
+    /* ── Rad/Deg pill ── */
+    .angle-pill {
+      position: absolute; top: 10px; right: 12px;
+      background: #1a2a4a; border: none; border-radius: 12px;
+      color: #7eb8f7; font-size: 11px; padding: 3px 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
+<div class="app">
+  <div class="top-bar">
+    <button class="mode-toggle" id="modeToggle">SCI</button>
+    <button class="history-toggle" id="historyToggle">History</button>
+  </div>
+
   <div class="calculator">
     <div class="display">
+      <span class="memory-badge" id="memBadge">M</span>
+      <button class="angle-pill" id="anglePill" style="display:none">DEG</button>
       <div class="expression" id="expression"></div>
-      <div class="result" id="result">0</div>
+      <div class="result" id="result" title="Tap to copy">0</div>
     </div>
-    <div class="buttons">
+
+    <!-- Memory row -->
+    <div class="mem-row" id="memRow" style="display:none">
+      <button class="btn btn-mem" data-action="mc">MC</button>
+      <button class="btn btn-mem" data-action="mr">MR</button>
+      <button class="btn btn-mem" data-action="m-minus">M−</button>
+      <button class="btn btn-mem" data-action="m-plus">M+</button>
+    </div>
+
+    <!-- Scientific panel -->
+    <div class="sci-panel" id="sciPanel">
+      <button class="btn btn-sci" data-action="sci" data-value="sin">sin</button>
+      <button class="btn btn-sci" data-action="sci" data-value="cos">cos</button>
+      <button class="btn btn-sci" data-action="sci" data-value="tan">tan</button>
+      <button class="btn btn-sci" data-action="sci" data-value="log">log</button>
+      <button class="btn btn-sci" data-action="sci" data-value="ln">ln</button>
+
+      <button class="btn btn-sci" data-action="sci" data-value="sqrt">√</button>
+      <button class="btn btn-sci" data-action="sci" data-value="sq">x²</button>
+      <button class="btn btn-sci" data-action="sci" data-value="cube">x³</button>
+      <button class="btn btn-sci" data-action="sci" data-value="inv">1/x</button>
+      <button class="btn btn-sci" data-action="sci" data-value="abs">|x|</button>
+
+      <button class="btn btn-sci" data-action="sci" data-value="pi">π</button>
+      <button class="btn btn-sci" data-action="sci" data-value="e">e</button>
+      <button class="btn btn-sci" data-action="sci" data-value="pow">xʸ</button>
+      <button class="btn btn-sci" data-action="sci" data-value="exp">EXP</button>
+      <button class="btn btn-sci" data-action="sci" data-value="fact">n!</button>
+    </div>
+
+    <!-- Basic buttons -->
+    <div class="buttons basic-grid" id="basicGrid">
       <button class="btn btn-wide btn-secondary" data-action="clear">AC</button>
-      <button class="btn btn-secondary" data-action="toggle-sign">+/-</button>
-      <button class="btn btn-secondary" data-action="percent">%</button>
+      <button class="btn btn-secondary btn-back" data-action="backspace">⌫</button>
       <button class="btn btn-operator" data-action="operator" data-value="÷">÷</button>
 
       <button class="btn" data-action="digit" data-value="7">7</button>
@@ -71,98 +202,301 @@
       <button class="btn" data-action="digit" data-value="3">3</button>
       <button class="btn btn-operator" data-action="operator" data-value="+">+</button>
 
+      <button class="btn btn-secondary" data-action="toggle-sign">+/−</button>
       <button class="btn btn-wide" data-action="digit" data-value="0">0</button>
-      <button class="btn" data-action="decimal">.</button>
+      <button class="btn btn-secondary" data-action="decimal">.</button>
       <button class="btn btn-operator" data-action="equals">=</button>
     </div>
   </div>
-  <script>
-    'use strict';
-    const state = { current:'0', previous:null, operator:null, waitingForOperand:false, expression:'' };
-    const resultEl = document.getElementById('result');
-    const expressionEl = document.getElementById('expression');
 
-    function updateDisplay() {
-      resultEl.textContent = state.current;
-      expressionEl.textContent = state.expression;
-      const len = state.current.length;
-      resultEl.classList.toggle('small',  len > 10);
-      resultEl.classList.toggle('xsmall', len > 14);
-    }
-    function setActiveOp(op) {
-      document.querySelectorAll('.btn-operator').forEach(b => b.classList.toggle('active', b.dataset.value === op));
-    }
-    function inputDigit(d) {
-      if (state.waitingForOperand) { state.current = d; state.waitingForOperand = false; }
-      else { state.current = state.current === '0' ? d : state.current + d; }
-      updateDisplay();
-    }
-    function inputDecimal() {
-      if (state.waitingForOperand) { state.current = '0.'; state.waitingForOperand = false; updateDisplay(); return; }
-      if (!state.current.includes('.')) { state.current += '.'; updateDisplay(); }
-    }
-    function calc(a, b, op) {
-      const x = parseFloat(a), y = parseFloat(b);
-      if (op==='+') return x+y; if (op==='−') return x-y;
-      if (op==='×') return x*y; if (op==='÷') return y!==0?x/y:'Error';
-      return b;
-    }
-    function fmt(v) { return v==='Error'?'Error':String(parseFloat(v.toPrecision(12))); }
-    function handleOperator(op) {
-      if (state.operator && !state.waitingForOperand) {
-        const r = calc(state.previous, state.current, state.operator);
-        state.current = fmt(r); state.previous = state.current;
-        state.expression = `${state.previous} ${op}`;
-      } else { state.previous = state.current; state.expression = `${state.current} ${op}`; }
-      state.operator = op; state.waitingForOperand = true; setActiveOp(op); updateDisplay();
-    }
-    function handleEquals() {
-      if (!state.operator || state.waitingForOperand) return;
-      const r = calc(state.previous, state.current, state.operator);
-      state.expression = `${state.previous} ${state.operator} ${state.current} =`;
-      state.current = fmt(r); state.previous = null; state.operator = null;
-      state.waitingForOperand = true; setActiveOp(null); updateDisplay();
-    }
-    function handleClear() {
-      Object.assign(state, {current:'0',previous:null,operator:null,waitingForOperand:false,expression:''});
-      setActiveOp(null); updateDisplay();
-    }
-    function handleToggleSign() {
-      if (state.current==='0'||state.current==='Error') return;
-      state.current = state.current.startsWith('-') ? state.current.slice(1) : '-'+state.current;
-      updateDisplay();
-    }
-    function handlePercent() {
-      const v = parseFloat(state.current); if (isNaN(v)) return;
-      state.current = String(v/100); updateDisplay();
-    }
-    document.querySelector('.buttons').addEventListener('click', e => {
-      const btn = e.target.closest('.btn'); if (!btn) return;
-      const {action, value} = btn.dataset;
-      if (action==='digit') inputDigit(value);
-      else if (action==='decimal') inputDecimal();
-      else if (action==='operator') handleOperator(value);
-      else if (action==='equals') handleEquals();
-      else if (action==='clear') handleClear();
-      else if (action==='toggle-sign') handleToggleSign();
-      else if (action==='percent') handlePercent();
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key>='0'&&e.key<='9') inputDigit(e.key);
-      else if (e.key==='.') inputDecimal();
-      else if (e.key==='+') handleOperator('+');
-      else if (e.key==='-') handleOperator('−');
-      else if (e.key==='*') handleOperator('×');
-      else if (e.key==='/') { e.preventDefault(); handleOperator('÷'); }
-      else if (e.key==='Enter'||e.key==='=') handleEquals();
-      else if (e.key==='Escape') handleClear();
-      else if (e.key==='%') handlePercent();
-      else if (e.key==='Backspace') {
-        if (!state.waitingForOperand&&state.current.length>1) state.current=state.current.slice(0,-1);
-        else state.current='0'; updateDisplay();
-      }
-    });
-    updateDisplay();
-  </script>
+  <!-- History panel -->
+  <div class="history-panel" id="historyPanel">
+    <div class="history-header">
+      <span class="history-title">History</span>
+      <button class="clear-history" id="clearHistory">Clear all</button>
+    </div>
+    <div id="historyList"><div class="history-empty">No calculations yet</div></div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast">Copied!</div>
+
+<script>
+'use strict';
+
+const state = {
+  current: '0', previous: null, operator: null,
+  waitingForOperand: false, expression: '',
+  memory: 0, hasMemory: false,
+  powMode: false, expMode: false,
+  useDeg: true,
+  history: [],
+  sciMode: false, historyOpen: false,
+};
+
+const resultEl     = document.getElementById('result');
+const expressionEl = document.getElementById('expression');
+const memBadge     = document.getElementById('memBadge');
+const copyToast    = document.getElementById('copyToast');
+const modeToggle   = document.getElementById('modeToggle');
+const historyToggle= document.getElementById('historyToggle');
+const sciPanel     = document.getElementById('sciPanel');
+const memRow       = document.getElementById('memRow');
+const historyPanel = document.getElementById('historyPanel');
+const historyList  = document.getElementById('historyList');
+const anglePill    = document.getElementById('anglePill');
+
+/* ── Display ── */
+function updateDisplay() {
+  resultEl.textContent = state.current;
+  expressionEl.textContent = state.expression;
+  const len = state.current.length;
+  resultEl.classList.toggle('small',  len > 10);
+  resultEl.classList.toggle('xsmall', len > 14);
+  memBadge.classList.toggle('visible', state.hasMemory);
+}
+
+function setActiveOp(op) {
+  document.querySelectorAll('.btn-operator').forEach(b =>
+    b.classList.toggle('active', b.dataset.value === op));
+}
+
+/* ── Digits & decimal ── */
+function inputDigit(d) {
+  if (state.powMode || state.expMode) {
+    state.current = state.current + d;
+    updateDisplay(); return;
+  }
+  if (state.waitingForOperand) { state.current = d; state.waitingForOperand = false; }
+  else { state.current = state.current === '0' ? d : state.current + d; }
+  updateDisplay();
+}
+
+function inputDecimal() {
+  if (state.waitingForOperand) { state.current = '0.'; state.waitingForOperand = false; updateDisplay(); return; }
+  if (!state.current.includes('.')) { state.current += '.'; updateDisplay(); }
+}
+
+/* ── Core arithmetic ── */
+function calc(a, b, op) {
+  const x = parseFloat(a), y = parseFloat(b);
+  if (op === '+') return x + y;
+  if (op === '−') return x - y;
+  if (op === '×') return x * y;
+  if (op === '÷') return y !== 0 ? x / y : 'Error';
+  if (op === 'xʸ') return Math.pow(x, y);
+  if (op === 'EXP') return x * Math.pow(10, y);
+  return y;
+}
+
+function fmt(v) {
+  if (v === 'Error' || isNaN(v) || !isFinite(v)) return 'Error';
+  const n = parseFloat(v.toPrecision(12));
+  return String(n);
+}
+
+/* ── Operator ── */
+function handleOperator(op) {
+  state.powMode = false; state.expMode = false;
+  if (state.operator && !state.waitingForOperand) {
+    const r = calc(state.previous, state.current, state.operator);
+    state.current = fmt(r);
+    state.previous = state.current;
+    state.expression = `${state.previous} ${op}`;
+  } else {
+    state.previous = state.current;
+    state.expression = `${state.current} ${op}`;
+  }
+  state.operator = op; state.waitingForOperand = true;
+  setActiveOp(op); updateDisplay();
+}
+
+/* ── Equals ── */
+function handleEquals() {
+  if (!state.operator || state.waitingForOperand) return;
+  const r = calc(state.previous, state.current, state.operator);
+  const expr = `${state.previous} ${state.operator} ${state.current} =`;
+  const result = fmt(r);
+  addHistory(expr, result);
+  state.expression = expr;
+  state.current = result;
+  state.previous = null; state.operator = null;
+  state.waitingForOperand = true; state.powMode = false; state.expMode = false;
+  setActiveOp(null); updateDisplay();
+}
+
+/* ── Scientific functions ── */
+function toRad(deg) { return deg * Math.PI / 180; }
+
+function handleSci(fn) {
+  const x = parseFloat(state.current);
+  let result, label;
+
+  if (fn === 'pi') { state.current = String(Math.PI); updateDisplay(); return; }
+  if (fn === 'e')  { state.current = String(Math.E);  updateDisplay(); return; }
+
+  if (fn === 'pow') {
+    state.previous = state.current;
+    state.expression = `${state.current} ^`;
+    state.operator = 'xʸ';
+    state.waitingForOperand = true; state.powMode = true;
+    updateDisplay(); return;
+  }
+  if (fn === 'exp') {
+    state.previous = state.current;
+    state.expression = `${state.current} × 10^`;
+    state.operator = 'EXP';
+    state.waitingForOperand = true; state.expMode = true;
+    updateDisplay(); return;
+  }
+
+  if (fn === 'sin')  { label='sin'; result = state.useDeg ? Math.sin(toRad(x)) : Math.sin(x); }
+  else if (fn==='cos')  { label='cos'; result = state.useDeg ? Math.cos(toRad(x)) : Math.cos(x); }
+  else if (fn==='tan')  { label='tan'; result = state.useDeg ? Math.tan(toRad(x)) : Math.tan(x); }
+  else if (fn==='log')  { label='log'; result = Math.log10(x); }
+  else if (fn==='ln')   { label='ln';  result = Math.log(x); }
+  else if (fn==='sqrt') { label='√';   result = Math.sqrt(x); }
+  else if (fn==='sq')   { label='x²';  result = x * x; }
+  else if (fn==='cube') { label='x³';  result = x * x * x; }
+  else if (fn==='inv')  { label='1/';  result = x !== 0 ? 1 / x : 'Error'; }
+  else if (fn==='abs')  { label='|';   result = Math.abs(x); }
+  else if (fn==='fact') {
+    label='!';
+    if (x < 0 || !Number.isInteger(x) || x > 170) { result = 'Error'; }
+    else { result = 1; for (let i = 2; i <= x; i++) result *= i; }
+  }
+
+  const expr = result === 'Error' ? 'Error' : `${label}(${state.current})`;
+  const r = result === 'Error' ? 'Error' : fmt(result);
+  state.expression = `${expr} =`;
+  state.current = r;
+  state.waitingForOperand = true;
+  addHistory(state.expression, r);
+  updateDisplay();
+}
+
+/* ── Clear / backspace ── */
+function handleClear() {
+  Object.assign(state, { current:'0', previous:null, operator:null,
+    waitingForOperand:false, expression:'', powMode:false, expMode:false });
+  setActiveOp(null); updateDisplay();
+}
+
+function handleBackspace() {
+  if (state.waitingForOperand) return;
+  state.current = state.current.length > 1 ? state.current.slice(0, -1) : '0';
+  updateDisplay();
+}
+
+function handleToggleSign() {
+  if (state.current === '0' || state.current === 'Error') return;
+  state.current = state.current.startsWith('-') ? state.current.slice(1) : '-' + state.current;
+  updateDisplay();
+}
+
+/* ── Memory ── */
+function handleMemory(action) {
+  const x = parseFloat(state.current) || 0;
+  if (action === 'mc')      { state.memory = 0; state.hasMemory = false; }
+  else if (action === 'mr') { state.current = String(state.memory); state.waitingForOperand = true; }
+  else if (action === 'm-plus')  { state.memory += x; state.hasMemory = true; }
+  else if (action === 'm-minus') { state.memory -= x; state.hasMemory = true; }
+  updateDisplay();
+}
+
+/* ── History ── */
+function addHistory(expr, val) {
+  if (val === 'Error') return;
+  state.history.unshift({ expr, val });
+  if (state.history.length > 50) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!state.history.length) {
+    historyList.innerHTML = '<div class="history-empty">No calculations yet</div>';
+    return;
+  }
+  historyList.innerHTML = state.history.map((h, i) =>
+    `<div class="history-item" data-idx="${i}">
+       <div class="history-expr">${h.expr}</div>
+       <div class="history-val">${h.val}</div>
+     </div>`
+  ).join('');
+}
+
+document.getElementById('clearHistory').addEventListener('click', () => {
+  state.history = []; renderHistory();
+});
+
+historyList.addEventListener('click', e => {
+  const item = e.target.closest('.history-item');
+  if (!item) return;
+  const h = state.history[+item.dataset.idx];
+  state.current = h.val; state.waitingForOperand = true; updateDisplay();
+});
+
+/* ── Copy result ── */
+resultEl.addEventListener('click', () => {
+  if (state.current === 'Error') return;
+  navigator.clipboard.writeText(state.current).catch(() => {});
+  copyToast.classList.add('show');
+  setTimeout(() => copyToast.classList.remove('show'), 1400);
+});
+
+/* ── Mode toggles ── */
+modeToggle.addEventListener('click', () => {
+  state.sciMode = !state.sciMode;
+  modeToggle.classList.toggle('active', state.sciMode);
+  sciPanel.classList.toggle('visible', state.sciMode);
+  memRow.style.display = state.sciMode ? 'grid' : 'none';
+  anglePill.style.display = state.sciMode ? 'block' : 'none';
+});
+
+historyToggle.addEventListener('click', () => {
+  state.historyOpen = !state.historyOpen;
+  historyToggle.classList.toggle('active', state.historyOpen);
+  historyPanel.classList.toggle('visible', state.historyOpen);
+});
+
+anglePill.addEventListener('click', () => {
+  state.useDeg = !state.useDeg;
+  anglePill.textContent = state.useDeg ? 'DEG' : 'RAD';
+});
+
+/* ── Unified button handler ── */
+document.querySelector('.calculator').addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn) return;
+  const { action, value } = btn.dataset;
+  if (action === 'digit')       inputDigit(value);
+  else if (action === 'decimal')    inputDecimal();
+  else if (action === 'operator')   handleOperator(value);
+  else if (action === 'equals')     handleEquals();
+  else if (action === 'clear')      handleClear();
+  else if (action === 'backspace')  handleBackspace();
+  else if (action === 'toggle-sign') handleToggleSign();
+  else if (action === 'sci')        handleSci(value);
+  else if (action === 'mc' || action === 'mr' || action === 'm-plus' || action === 'm-minus')
+    handleMemory(action);
+});
+
+/* ── Keyboard ── */
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
+  else if (e.key === '.')            inputDecimal();
+  else if (e.key === '+')            handleOperator('+');
+  else if (e.key === '-')            handleOperator('−');
+  else if (e.key === '*')            handleOperator('×');
+  else if (e.key === '/') { e.preventDefault(); handleOperator('÷'); }
+  else if (e.key === '^')            handleSci('pow');
+  else if (e.key === 'Enter' || e.key === '=') handleEquals();
+  else if (e.key === 'Escape')       handleClear();
+  else if (e.key === 'Backspace')    handleBackspace();
+  else if (e.key === '%')            handleSci('fact');
+});
+
+updateDisplay();
+</script>
 </body>
 </html>
